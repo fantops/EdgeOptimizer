@@ -72,6 +72,7 @@ models/*.pth
 models/*.onnx
 models/*.pb
 models/*.ckpt
+models/tokenizer/
 
 # Environment files
 .env
@@ -85,3 +86,10 @@ models/*.ckpt
 
 # Test application placeholder
 testapp/
+
+# Experiment results
+experiments/results_*.json
+experiments/*.log
+
+# API keys and sensitive config
+configs/experiment_config.json
