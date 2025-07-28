@@ -1,4 +1,14 @@
 {
   "battery_threshold": 20,
-  "high_temp_limit": 70
+  "cpu_threshold": 80,
+  "memory_threshold": 85,
+  "temperature_threshold": 70,
+  "auto_fallback_cloud": true,
+  "monitoring_interval": 5.0,
+  "model_settings": {
+    "default_local_model": "gpt2",
+    "device": "cpu",
+    "max_tokens": 50,
+    "temperature": 0.7
+  }
 } 

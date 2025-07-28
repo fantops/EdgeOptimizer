@@ -1,0 +1,38 @@
+{
+  "experiment_duration": 180,
+  "sampling_interval": 5,
+  "cloud_api_url": "https://router.huggingface.co/v1",
+  "cloud_api_key": "hf_your_actual_token_here",
+  "cloud_provider": "huggingface",
+  "test_prompts": [
+    "What is machine learning?",
+    "Explain quantum computing",
+    "How does a neural network work?",
+    "What are the benefits of edge computing?",
+    "Describe the differences between supervised and unsupervised learning",
+    "What is the role of activation functions in neural networks?",
+    "Explain the concept of overfitting in machine learning",
+    "How do convolutional neural networks work?",
+    "What is transfer learning and when is it useful?",
+    "Describe the transformer architecture"
+  ],
+  "power_measurement": {
+    "enable_battery_monitoring": true,
+    "enable_cpu_monitoring": true,
+    "enable_memory_monitoring": true,
+    "enable_thermal_monitoring": false
+  },
+  "inference_settings": {
+    "local_model": "gpt2",
+    "local_max_tokens": 1000,
+    "local_device": "cpu",
+    "cloud_model": "mistralai/Mistral-7B-Instruct-v0.2:featherless-ai",
+    "cloud_max_tokens": 1000,
+    "use_mock_cloud": false
+  },
+  "openai_settings": {
+    "model": "gpt-3.5-turbo",
+    "max_tokens": 1000,
+    "temperature": 0.7
+  }
+}

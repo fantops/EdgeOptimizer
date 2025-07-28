@@ -1,119 +1,93 @@
-import onnxruntime as ort
-import json
-import torch
-from transformers import AutoTokenizer
-import numpy as np
-import time
+#!/usr/bin/env python3
+"""
+Simplified chatbot using EdgeOptimizer's modular components
+"""
 
-class PhiChatbot:
-    def __init__(self, model_path="models/phi.onnx"):
-        self.model_path = model_path
-        self.session = None
-        self.tokenizer = None
-        self.load_model()
+import sys
+import os
+
+# Add parent directory to path to import optimizer modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from optimizer.model_manager import get_model_manager
+from optimizer.config import get_config_manager
+from typing import Dict, Any
+
+
+class SimpleChatbot:
+    """Simplified chatbot interface using EdgeOptimizer's ModelManager"""
+    
+    def __init__(self, model_name: str = None):
+        # Load configuration to get default model if none specified
+        self.config_manager = get_config_manager()
         
-    def load_model(self):
-        """Load ONNX model and tokenizer"""
+        if model_name is None:
+            # Try to get default model from optimizer config
+            optimizer_config = self.config_manager.load_config("optimizer_config", required=False)
+            model_name = optimizer_config.get("model_settings", {}).get("default_local_model", "gpt2")
+        
+        self.model_name = model_name
+        self.model_manager = get_model_manager()
+        self.device = "cpu"  # Use CPU for edge compatibility
+        
+        # Pre-load the model
+        print(f"🤖 Initializing SimpleChatbot with {model_name}")
+        model_info = self.model_manager.load_model(model_name, self.device)
+        
+        if model_info["status"] == "error":
+            print(f"⚠️ Model loading failed, will use mock responses")
+            self.model = None
+            self.tokenizer = None
+        else:
+            self.model = model_info["model"]
+            self.tokenizer = model_info["tokenizer"]
+        
+    def run_inference(self, prompt: str, max_length: int = None, **kwargs) -> Dict[str, Any]:
+        """Run inference using the model manager"""
         try:
-            # Load ONNX model
-            self.session = ort.InferenceSession(self.model_path)
-            print(f"✅ Loaded ONNX model: {self.model_path}")
+            # Get default max_length from config if not specified
+            if max_length is None:
+                optimizer_config = self.config_manager.load_config("optimizer_config", required=False)
+                max_length = optimizer_config.get("model_settings", {}).get("max_tokens", 50)
             
-            # Load tokenizer
-            try:
-                self.tokenizer = AutoTokenizer.from_pretrained("models/tokenizer")
-                print("✅ Loaded tokenizer")
-            except:
-                # Fallback to GPT-2 tokenizer if custom tokenizer not found
-                self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
-                print("✅ Loaded GPT-2 tokenizer as fallback")
-                
-        except Exception as e:
-            print(f"❌ Error loading model: {e}")
-            print("Please run: python models/download_model.py")
-            raise
-    
-    def tokenize_input(self, text):
-        """Tokenize input text"""
-        try:
-            # Add padding token if not present
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
+            if self.model is None or self.tokenizer is None:
+                # Fallback for testing
+                import time
+                start_time = time.time()
+                response = f"Mock response to: {prompt[:30]}..."
+                inference_time = time.time() - start_time
+                return {
+                    "response": response,
+                    "inference_time": inference_time,
+                    "success": True,
+                    "model_name": self.model_name,
+                    "method": "mock"
+                }
             
-            # Tokenize with padding
-            inputs = self.tokenizer(
-                text,
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=512
+            # Use model manager for inference
+            result = self.model_manager.run_inference(
+                model_name=self.model_name,
+                prompt=prompt,
+                max_length=max_length,
+                device=self.device,
+                **kwargs
             )
             
-            return inputs['input_ids'].numpy()
+            # Add method info
+            result["method"] = "local"
+            return result
             
         except Exception as e:
-            print(f"❌ Tokenization error: {e}")
-            # Return dummy input as fallback
-            return np.array([[101, 2009, 2003, 1037, 3978, 102]])
-    
-    def run_inference(self, input_text):
-        """Run inference on input text"""
-        try:
-            start_time = time.time()
-            
-            # Tokenize input
-            input_ids = self.tokenize_input(input_text)
-            
-            # Run ONNX inference
-            outputs = self.session.run(
-                None, 
-                {"input_ids": input_ids}
-            )
-            
-            # Get logits
-            logits = outputs[0]
-            
-            # Generate response (simplified - just get next token)
-            next_token = np.argmax(logits[0, -1, :])
-            
-            # Decode response
-            response_tokens = [next_token]
-            response_text = self.tokenizer.decode(response_tokens, skip_special_tokens=True)
-            
-            inference_time = time.time() - start_time
-            
+            import time
             return {
-                "response": response_text,
-                "inference_time": inference_time,
-                "input_length": len(input_ids[0]),
-                "model_path": self.model_path
-            }
-            
-        except Exception as e:
-            return {
-                "response": f"Inference error: {e}",
+                "response": f"Error during inference: {e}",
                 "inference_time": 0,
-                "input_length": 0,
-                "model_path": self.model_path
+                "success": False,
+                "model_name": self.model_name,
+                "error": str(e),
+                "method": "error"
             }
-
-if __name__ == "__main__":
-    chatbot = PhiChatbot()
-    print("🤖 EdgeOptimizer Chatbot Ready!")
-    print("Type 'quit' to exit")
     
-    while True:
-        try:
-            prompt = input("\nYou: ")
-            if prompt.lower() == 'quit':
-                break
-                
-            result = chatbot.run_inference(prompt)
-            print(f"Bot: {result['response']}")
-            print(f"[Inference time: {result['inference_time']:.3f}s]")
-            
-        except KeyboardInterrupt:
-            print("\nGoodbye!")
-            break
-        except Exception as e:
-            print(f"Error: {e}") 
+    def get_model_info(self) -> Dict[str, Any]:
+        """Get information about the loaded model"""
+        return self.model_manager.get_model_info(self.model_name, self.device)
