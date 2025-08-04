@@ -76,32 +76,38 @@ Edit `configs/experiment_config.json`:
   ]
 }
 ```
-```
 
-## Project Structure
+## 📁 Project Structure
+
 ```
 EdgeOptimizer/
 ├── app/
 │   └── chatbot.py              # SimpleChatbot using ModelManager
-├── optimizer/                  # 🆕 Modular core components
+├── optimizer/                  # Core modular components
 │   ├── __init__.py            # Exports all components
 │   ├── agent.py               # EdgeOptimizerAgent (main orchestrator)
 │   ├── cloud_inference.py    # Multi-provider cloud API manager
 │   ├── config.py              # ConfigManager with validation
 │   ├── experiment_runner.py   # Reusable experiment framework
+│   ├── logging_config.py      # Centralized logging system
 │   ├── model_manager.py       # Local model management with caching
 │   └── monitor.py             # SystemMonitor and PowerTracker
+├── experiments/
+│   ├── power_comparison.py    # Main power comparison script
+│   └── enhanced_power_monitor.py # Advanced power tracking
 ├── configs/
 │   ├── experiment_config.json # Experiment and API settings
 │   └── optimizer_config.json  # Power management configuration
-├── experiments/
-│   ├── power_comparison.py    # 67% reduced using modular components
-│   └── README.md              # Detailed experiment documentation
+├── logs/                      # Organized logging structure
+│   ├── power_analysis/       # Power consumption logs
+│   ├── experiments/          # Experiment result logs
+│   ├── system/              # System operation logs
+│   └── archive/             # Archived old logs
 ├── main.py                    # Configuration-driven main application
 └── requirements.txt           # Python dependencies
 ```
 
-## Modular Components
+## 🔧 Core Components
 
 ### Core Modules
 - **`SystemMonitor`** - Battery, CPU, memory, temperature monitoring
@@ -112,17 +118,7 @@ EdgeOptimizer/
 - **`EdgeOptimizerAgent`** - Intelligent power-aware inference routing
 - **`PowerTracker`** - Specialized power monitoring for experiments
 
-### Usage Example
-## 📊 Log Management & Analysis
-
-### **Organized Log Structure**
-```
-logs/
-├── power_analysis/     # Power consumption analysis results
-├── experiments/        # Experiment data and results  
-├── system/            # System operation logs
-└── archive/           # Automatically archived old logs
-```
+## 📊 Log Management
 
 ### **Log Analysis Commands**
 ```python
@@ -137,6 +133,7 @@ print(summary)
 # Clean up old logs (keep 10 most recent)
 archived = cleanup_logs(keep_recent=10)
 print(f"Archived {archived} old log files")
+```
 ## 📈 Performance Benchmarks
 
 ### **Real-World Results** (MacBook Pro, M1 Pro)
