@@ -10,6 +10,7 @@ import os
 import argparse
 import logging
 from datetime import datetime
+from typing import Dict, Any
 
 # Add parent directory to path to import optimizer modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,47 +21,22 @@ from optimizer.config import get_config_manager
 from optimizer.cloud_inference import CloudInferenceManager
 from optimizer.experiment_runner import PowerExperimentRunner
 
-# Setup experiment logging
+# Import enhanced power monitoring
+from enhanced_power_monitor import PowerConsumptionMonitor
+
+# Import centralized logging
+from optimizer.logging_config import get_logger, save_experiment_results
+
+# Setup experiment logging using centralized system
 def setup_experiment_logging():
-    """Setup logging for power comparison experiments"""
-    log_dir = "logs"
-    os.makedirs(log_dir, exist_ok=True)
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_filename = f"{log_dir}/power_comparison_{timestamp}.log"
-    
-    # Create a specific logger for this experiment
-    logger = logging.getLogger('PowerComparison')
-    logger.setLevel(logging.INFO)
-    
-    # Clear any existing handlers
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
-    
-    # Create file handler
-    file_handler = logging.FileHandler(log_filename)
-    file_handler.setLevel(logging.INFO)
-    
-    # Create console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    
-    # Create formatter
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(formatter)
-    console_handler.setFormatter(formatter)
-    
-    # Add handlers to logger
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-    
-    return logger
+    """Setup logging for power comparison experiments using centralized system"""
+    return get_logger('PowerComparison', 'experiments')
 
 logger = setup_experiment_logging()
 
 
 class PowerComparisonExperiment:
-    """Enhanced power comparison experiment with mode selection"""
+    """Enhanced power comparison experiment with advanced power monitoring"""
     
     def __init__(self, mode: str = "both", duration: int = 300):
         self.mode = mode.lower()
@@ -79,11 +55,18 @@ class PowerComparisonExperiment:
         self.cloud_manager = CloudInferenceManager(self.config)
         self.experiment_runner = PowerExperimentRunner(duration, self.power_tracker, logger)
         
+        # Initialize enhanced power monitoring
+        self.power_monitor = PowerConsumptionMonitor(sampling_rate=0.1)  # High frequency monitoring
+        
         print(f"🧪 Power Comparison Experiment Initialized")
         print(f"🎯 Mode: {self.mode.upper()}")
         print(f"📖 Local model: {self.config.get('inference_settings', {}).get('local_model', 'gpt2')}")
         print(f"☁️  Cloud provider: {self.cloud_manager.provider}")
         print(f"⏱️  Duration: {duration} seconds")
+        print(f"⚡ Enhanced power monitoring enabled (0.1s sampling)")
+        
+        # Set power baseline
+        self.power_monitor.set_baseline()
         
     def run_local_inference(self, prompt: str) -> dict:
         """Run local inference using ModelManager"""
@@ -105,7 +88,7 @@ class PowerComparisonExperiment:
         return self.cloud_manager.run_inference(prompt)
     
     def run_experiment(self):
-        """Run the power comparison experiment based on selected mode"""
+        """Run the power comparison experiment with enhanced power monitoring"""
         print(f"\n🚀 Starting {self.mode.upper()} power comparison experiment...")
         
         # Get test prompts from config
@@ -119,32 +102,70 @@ class PowerComparisonExperiment:
         
         # Run experiments based on mode
         if self.mode in ["local", "both"]:
-            logger.info("Starting LOCAL inference tests")
-            print(f"\n📍 Running LOCAL inference tests...")
+            logger.info("Starting LOCAL inference tests with enhanced power monitoring")
+            print(f"\n📍 Running LOCAL inference tests with detailed power monitoring...")
+            
+            # Start enhanced power monitoring for local phase
+            self.power_monitor.start_continuous_monitoring("local")
+            
             local_results = self.experiment_runner.run_phase_with_power(
                 phase_name="local",
                 test_function=self.run_local_inference,
                 prompts=test_prompts,
                 interval=5
             )
+            
+            # Stop monitoring and analyze power consumption
+            self.power_monitor.stop_monitoring()
+            local_power_analysis = self.power_monitor.analyze_power_consumption("local")
+            
+            local_results["power_analysis"] = local_power_analysis
             all_results["local"] = local_results
             logger.info(f"LOCAL tests completed - {len(local_results.get('inference_times', []))} tests")
             
+            # Print local power summary
+            self._print_phase_power_summary("LOCAL", local_power_analysis)
+            
         if self.mode in ["cloud", "both"]:
-            logger.info("Starting CLOUD inference tests")
-            print(f"\n☁️  Running CLOUD inference tests...")
+            logger.info("Starting CLOUD inference tests with enhanced power monitoring")
+            print(f"\n☁️  Running CLOUD inference tests with detailed power monitoring...")
+            
+            # Start enhanced power monitoring for cloud phase
+            self.power_monitor.start_continuous_monitoring("cloud")
+            
             cloud_results = self.experiment_runner.run_phase_with_power(
                 phase_name="cloud",
                 test_function=self.run_cloud_inference,
                 prompts=test_prompts,
                 interval=5
             )
+            
+            # Stop monitoring and analyze power consumption
+            self.power_monitor.stop_monitoring()
+            cloud_power_analysis = self.power_monitor.analyze_power_consumption("cloud")
+            
+            cloud_results["power_analysis"] = cloud_power_analysis
             all_results["cloud"] = cloud_results
             logger.info(f"CLOUD tests completed - {len(cloud_results.get('inference_times', []))} tests")
+            
+            # Print cloud power summary
+            self._print_phase_power_summary("CLOUD", cloud_power_analysis)
         
-        # Save and display results
+        # Enhanced power comparison analysis
+        if "local" in all_results and "cloud" in all_results:
+            print(f"\n🔋 Generating comprehensive power consumption comparison...")
+            power_comparison = self.power_monitor.compare_power_consumption("local", "cloud")
+            all_results["power_comparison"] = power_comparison
+            
+            # Print detailed power comparison
+            self.power_monitor.print_power_summary(power_comparison)
+            
+            # Save detailed power analysis
+            self.power_monitor.save_power_analysis(power_comparison)
+        
+        # Save and display results using centralized logging
         logger.info("Saving experiment results and generating summary")
-        filename = self.experiment_runner.save_results(all_results, include_summary=True)
+        filename = save_experiment_results(all_results, "power_comparison")
         
         # Generate and print summary
         summary = self.experiment_runner.generate_summary(all_results)
@@ -157,6 +178,65 @@ class PowerComparisonExperiment:
         if "cloud" in all_results:
             print(f"📊 Cloud tests: {len(all_results['cloud']['inference_times'])}")
         print(f"📁 Results saved to: {filename}")
+        
+        return all_results
+    
+    def _print_phase_power_summary(self, phase_name: str, power_analysis: Dict[str, Any]):
+        """Print power consumption summary for a specific phase"""
+        if "error" in power_analysis:
+            print(f"⚠️  Could not analyze power consumption for {phase_name}: {power_analysis['error']}")
+            return
+        
+        print(f"\n⚡ {phase_name} POWER CONSUMPTION SUMMARY:")
+        print("=" * 50)
+        
+        power_data = power_analysis["power_consumption"]
+        print(f"📊 Power Score: {power_data['avg_power_score']:.2f} (peak: {power_data['peak_power_score']:.2f})")
+        
+        # Add actual power consumption estimates if available
+        if "estimated_watts" in power_analysis.get("power_breakdown", {}):
+            breakdown = power_analysis["power_breakdown"]
+            print(f"⚡ Estimated Power: {breakdown['estimated_watts']:.1f}W avg (peak: {breakdown.get('peak_watts', breakdown['estimated_watts']):.1f}W)")
+            print(f"   🔧 Processing overhead: {breakdown.get('processing_overhead_watts', 0):.1f}W")
+            print(f"   💻 CPU contribution: {breakdown.get('cpu_contribution_percent', 0):.1f}%")
+            if breakdown.get('efficiency', {}):
+                efficiency = breakdown['efficiency']
+                print(f"   📈 Power efficiency: {efficiency.get('efficiency_score', 0):.1f}/100")
+        
+        if power_analysis["battery"]["available"]:
+            battery = power_analysis["battery"]
+            # Enhanced battery drain reporting with better explanations
+            initial_pct = battery.get('initial_percent', 0)
+            final_pct = battery.get('final_percent', 0)
+            drain_pct = battery['total_drain_percent']
+            drain_rate = battery['drain_rate_per_hour']
+            power_source = battery.get('power_source', 'Unknown')
+            
+            print(f"🔋 Battery Analysis:")
+            print(f"   Initial: {initial_pct:.1f}% → Final: {final_pct:.1f}% (Power: {power_source})")
+            
+            if drain_pct > 0:
+                print(f"   ⬇️  Power Drain: {drain_pct:.3f}% ({drain_rate:.3f}%/hour)")
+                if battery["estimated_remaining_hours"] < 100:
+                    print(f"   ⏱️  Est. remaining: {battery['estimated_remaining_hours']:.1f} hours")
+            elif drain_pct < 0:
+                print(f"   ⬆️  Battery Charged: {abs(drain_pct):.3f}% during test (plugged in)")
+                print(f"   🔌 Charging rate: {abs(drain_rate):.3f}%/hour")
+            else:
+                print(f"   🔹 No battery change detected")
+        else:
+            print(f"🔋 Battery: Not available (likely desktop/AC powered)")
+        
+        cpu_data = power_analysis["cpu_power"]
+        print(f"💻 CPU: {cpu_data['avg_usage_percent']:.1f}% avg (peak: {cpu_data['peak_usage_percent']:.1f}%)")
+        print(f"🔥 CPU Power Score: {cpu_data['avg_power_score']:.2f}")
+        
+        if power_analysis["thermal"]["available"]:
+            thermal = power_analysis["thermal"]
+            print(f"🌡️  Thermal: {thermal['avg_temperature']:.1f}°C avg (peak: {thermal['peak_temperature']:.1f}°C)")
+            print(f"📈 Temperature rise: {thermal['temperature_rise']:.1f}°C")
+        
+        print("=" * 50)
 
 
 def parse_arguments():

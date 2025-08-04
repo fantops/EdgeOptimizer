@@ -8,7 +8,7 @@ import sys
 from app.chatbot import SimpleChatbot
 from optimizer.agent import EdgeOptimizerAgent
 from optimizer.config import get_config_manager
-from optimizer.logger import get_logger, log_system_status
+from optimizer.logging_config import get_logger
 
 
 def main():

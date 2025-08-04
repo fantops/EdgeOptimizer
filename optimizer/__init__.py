@@ -13,7 +13,7 @@ This package provides modular components for:
 
 from .agent import EdgeOptimizerAgent
 from .monitor import SystemMonitor, PowerTracker
-from .logger import get_logger, log_experiment_start, log_inference_result, log_system_status, log_power_reading
+from .logging_config import get_logger
 from .model_manager import ModelManager, get_model_manager
 from .config import ConfigManager, get_config_manager, load_config
 from .cloud_inference import CloudInferenceManager
