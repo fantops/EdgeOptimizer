@@ -10,18 +10,34 @@ import json
 import torch
 from typing import Dict, Any, Optional, Union
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from huggingface_hub import login
 
 
 class ModelManager:
     """Centralized model management for local inference"""
     
-    def __init__(self, cache_dir: Optional[str] = None):
+    def __init__(self, cache_dir: Optional[str] = None, hf_token: Optional[str] = None):
         self.cache_dir = cache_dir or os.path.expanduser("~/.cache/edgeoptimizer")
         self.models = {}  # Cache loaded models
         self.tokenizers = {}  # Cache tokenizers
+        self.authenticated = False
         
         # Ensure cache directory exists
         os.makedirs(self.cache_dir, exist_ok=True)
+        
+        # Setup HuggingFace authentication if token provided
+        if hf_token:
+            self._setup_hf_auth(hf_token)
+    
+    def _setup_hf_auth(self, token: str):
+        """Setup HuggingFace authentication"""
+        try:
+            login(token=token)
+            self.authenticated = True
+            print("✅ HuggingFace authentication successful")
+        except Exception as e:
+            print(f"⚠️  HuggingFace authentication failed: {e}")
+            self.authenticated = False
     
     def load_model(self, model_name: str = "gpt2", device: str = "cpu") -> Dict[str, Any]:
         """Load a model and tokenizer with caching"""
@@ -45,11 +61,21 @@ class ModelManager:
             if tokenizer.pad_token is None:
                 tokenizer.pad_token = tokenizer.eos_token
             
-            # Load model
+            # Load model with optimizations for larger models like Mistral
+            load_kwargs = {
+                "torch_dtype": torch.float32,
+                "low_cpu_mem_usage": True
+            }
+            
+            # For larger models like Mistral, use float16 if possible
+            if "mistral" in model_name.lower() or "7b" in model_name.lower():
+                if device != "cpu":  # GPU can handle float16 better
+                    load_kwargs["torch_dtype"] = torch.float16
+                print(f"🧠 Loading large model {model_name} with optimizations...")
+            
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
-                torch_dtype=torch.float32,
-                low_cpu_mem_usage=True
+                **load_kwargs
             )
             
             # Move to device
@@ -228,9 +254,20 @@ class ModelManager:
 # Global model manager instance
 _model_manager = None
 
-def get_model_manager() -> ModelManager:
+def get_model_manager(hf_token: Optional[str] = None) -> ModelManager:
     """Get the singleton model manager instance"""
     global _model_manager
     if _model_manager is None:
-        _model_manager = ModelManager()
+        # Try to get HF token from config if not provided
+        if hf_token is None:
+            try:
+                import json
+                config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'configs', 'experiment_config.json')
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                hf_token = config.get('cloud_api_key')
+            except:
+                pass
+                
+        _model_manager = ModelManager(hf_token=hf_token)
     return _model_manager
