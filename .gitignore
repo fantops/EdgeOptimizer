@@ -65,6 +65,15 @@ Pipfile.lock
 # VS Code
 .vscode/
 
+# Model files
+models/*.bin
+models/*.pt
+models/*.pth
+models/*.onnx
+models/*.pb
+models/*.ckpt
+models/tokenizer/
+
 # Environment files
 .env
 .venv
@@ -72,9 +81,9 @@ Pipfile.lock
 # MacOS
 .DS_Store
 
-# Logs directory
-logs/
+# Other
 *.log
+logs/
 
 # Test application placeholder
 testapp/
@@ -85,4 +94,3 @@ experiments/*.log
 
 # API keys and sensitive config
 configs/experiment_config.json
-!configs/experiment_config.template.json

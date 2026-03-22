@@ -1,6 +1,7 @@
 {
   "experiment_duration": 180,
   "sampling_interval": 5,
+  "local_model_path": "models/model.onnx",
   "cloud_api_url": "https://router.huggingface.co/v1",
   "cloud_api_key": "hf_your_actual_token_here",
   "cloud_provider": "huggingface",
