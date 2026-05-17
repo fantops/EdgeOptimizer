@@ -31,8 +31,18 @@ import psutil
 
 
 _REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
-_CROSSMON_REL_BIN = os.path.join("tools", "crossmon", "build", "crossmon")
-_CROSSMON_DBG_BIN = os.path.join("tools", "crossmon", "build", "Debug", "crossmon")
+
+# CMake places the binary differently on each platform / generator:
+#   macOS Unix Makefiles : build/crossmon            (Debug -> build/Debug/crossmon)
+#   Linux Unix Makefiles : build/crossmon
+#   Windows MSVC         : build/Release/crossmon.exe  /  build/Debug/crossmon.exe
+_CROSSMON_CANDIDATES = (
+    os.path.join("tools", "crossmon", "build", "crossmon"),
+    os.path.join("tools", "crossmon", "build", "Debug", "crossmon"),
+    os.path.join("tools", "crossmon", "build", "Release", "crossmon.exe"),
+    os.path.join("tools", "crossmon", "build", "Debug", "crossmon.exe"),
+    os.path.join("tools", "crossmon", "build", "crossmon.exe"),
+)
 
 
 @dataclass
@@ -60,13 +70,14 @@ class SystemSampler:
 
     @staticmethod
     def _locate_crossmon() -> Optional[str]:
-        for rel in (_CROSSMON_REL_BIN, _CROSSMON_DBG_BIN):
+        for rel in _CROSSMON_CANDIDATES:
             path = os.path.join(_REPO_ROOT, rel)
-            if os.path.isfile(path) and os.access(path, os.X_OK):
+            if os.path.isfile(path):
+                # os.access(.., X_OK) is unreliable on Windows; trust the
+                # filename suffix / file existence instead.
                 return path
-        # Also accept a `crossmon` on PATH.
-        on_path = shutil.which("crossmon")
-        return on_path
+        # Also accept a `crossmon` (or `crossmon.exe`) on PATH.
+        return shutil.which("crossmon")
 
     # ------------------------------------------------------------------
     # CrossMon path
