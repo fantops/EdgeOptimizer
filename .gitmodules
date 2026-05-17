@@ -1,0 +1,3 @@
+[submodule "tools/crossmon"]
+	path = tools/crossmon
+	url = https://github.com/fantops/CrossMon.git
