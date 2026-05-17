@@ -1,0 +1,9 @@
+{
+  "gates": {
+    "npu_op_pct_floor": 90.0,
+    "npu_op_pct_floor_per_class": 80.0,
+    "energy_per_inference_max_j": 5.0,
+    "energy_regression_max_pct": 20.0,
+    "latency_regression_max_pct": 25.0
+  }
+}
